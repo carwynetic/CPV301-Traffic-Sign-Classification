@@ -1,0 +1,374 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{url}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\graphicspath{{figures/}{./}}
+
+\begin{document}
+
+\title{Traffic Sign Classification Using Histogram of Oriented Gradients and Linear Support Vector Machines on the GTSRB Dataset}
+
+\author{
+\IEEEauthorblockN{1\textsuperscript{st} Thong Huynh}
+\IEEEauthorblockA{\textit{FPT University}\\
+Ho Chi Minh Campus, Vietnam\\
+thonghv4@fe.edu.vn}
+\and
+\IEEEauthorblockN{2\textsuperscript{nd} Doan Bao Phuc Nguyen}
+\IEEEauthorblockA{\textit{FPT University}\\
+Ho Chi Minh Campus, Vietnam\\
+baote332@gmail.com}
+\and
+\IEEEauthorblockN{3\textsuperscript{rd} Duc Thuan Vu}
+\IEEEauthorblockA{\textit{FPT University}\\
+Ho Chi Minh Campus, Vietnam\\
+thoingu68@gmail.com}
+\and
+\IEEEauthorblockN{\hspace{-1.2cm}
+\begin{tabular}{cc}
+\begin{tabular}{c}
+4\textsuperscript{th} Nhat Hoanh An Dinh\\
+\textit{FPT University}\\
+Ho Chi Minh Campus, Vietnam\\
+bakerjohn123.9@gmail.com
+\end{tabular}
+&
+\hspace{1.6cm}
+\begin{tabular}{c}
+5\textsuperscript{th} Cong Minh Nguyen\\
+\textit{FPT University}\\
+Ho Chi Minh Campus, Vietnam\\
+nguyenminhfptu@gmail.com
+\end{tabular}
+\end{tabular}}
+}
+
+\maketitle
+
+\begin{abstract}
+Traffic sign classification is an important component of intelligent transportation systems because it supports automatic recognition of road signs from visual data. A lightweight machine learning approach is investigated for traffic sign classification on the German Traffic Sign Recognition Benchmark (GTSRB). In the proposed workflow, annotated sign regions are cropped from the input images, resized to a fixed resolution, converted to grayscale, and represented using Histogram of Oriented Gradients (HOG) descriptors. The extracted features are standardized and classified using a Linear Support Vector Machine (LinearSVC). Experiments on the validation split show that the model achieves an accuracy of 92.36\%, a macro F1-score of 93.43\%, and a weighted F1-score of 92.27\%. A small qualitative test sample obtains 85.00\% accuracy; this sampled result is reported only as an additional inspection and is not treated as the official GTSRB test-set accuracy. The results indicate that HOG features combined with a linear SVM provide a simple and reproducible baseline for traffic sign classification, while also highlighting the need for full test-set evaluation and comparison with stronger baselines.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Traffic sign classification, GTSRB, Histogram of Oriented Gradients, Linear Support Vector Machine, image classification, machine learning
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Traffic signs provide essential visual information for regulating traffic, warning drivers of hazards, and supporting safe road navigation. Automatic traffic sign recognition is therefore an important component of intelligent transportation systems and driver-assistance applications. The primary focus is traffic sign classification: given a traffic sign region extracted from an image, the system predicts the corresponding sign category.
+
+Recent deep learning methods have achieved strong performance in visual recognition tasks, but they often require substantial training data, computational resources, and careful model tuning. For lightweight and reproducible recognition systems, traditional machine learning remains useful because its feature extraction and classification stages can be inspected more directly. This motivates the use of Histogram of Oriented Gradients (HOG) features, which describe local edge and shape patterns that are relevant to many traffic signs.
+
+A lightweight classification pipeline is developed for the German Traffic Sign Recognition Benchmark (GTSRB). The pipeline crops annotated sign regions, resizes them to a fixed input size, converts them to grayscale, extracts HOG descriptors, standardizes the feature vectors, and trains a Linear Support Vector Machine (LinearSVC) to classify traffic signs into 43 categories. The main contribution is a reproducible HOG and LinearSVC baseline for GTSRB, accompanied by dataset exploration, validation-based evaluation, Weights \& Biases logging, and a discussion of observed strengths and limitations. Unlike detection-oriented pipelines, the proposed approach does not perform full-image localization with sliding windows or Non-Maximum Suppression; it relies on the region-of-interest annotations available in the dataset.
+
+The remainder of the manuscript is organized as follows. Section~\ref{sec:related-work} reviews related work on traffic sign recognition and classical machine learning approaches. Section~\ref{sec:methodology} presents the proposed HOG and LinearSVC classification framework. Section~\ref{sec:experimental-setup} describes the experimental setup. Section~\ref{sec:results} presents and discusses the experimental results. Finally, Section~\ref{sec:conclusion} concludes the paper and outlines future work.
+
+\section{Related Work}
+\label{sec:related-work}
+
+Traffic sign recognition (TSR) is commonly studied as part of intelligent transportation systems and advanced driver-assistance systems. A recent review characterizes TSR systems as combinations of detection, preprocessing, feature extraction, and classification stages, with GTSRB frequently used as a public benchmark for recognition experiments~\cite{younes2023review}. Earlier systems often relied on color, shape, and handcrafted descriptors to isolate candidate signs and distinguish among traffic sign categories~\cite{agrawal2017moment,agrawal2017ensemble,cojocariu2018hogsvm}. Although these approaches are comparatively interpretable, their performance can be affected by illumination variation, occlusion, viewpoint changes, and background clutter.
+
+Several studies have investigated handcrafted features and SVM-based classifiers for traffic sign detection or recognition. Liu and Zhong proposed a prohibition traffic sign recognition method using image preprocessing, HOG features, and an SVM network evaluated with GTSRB data~\cite{liu2022hogsvm}. Mato\v{s}, Krpi\'c, and Romi\'c combined the Hough transform, HOG descriptors, and a multi-class SVM for speed-limit sign recognition on GTSRB and rMASTIF~\cite{matos2019speedlimit}. Other HOG--SVM pipelines have been examined in platform-constrained applications, including Android-based deployment and ROI-filtered traffic sign detection~\cite{qiang2017android,cojocariu2018hogsvm}. Vieira compared several preprocessing techniques for HOG--SVM traffic sign recognition on GTSRB and reported that the selected preprocessing method influenced the resulting classification accuracy~\cite{vieira2025preprocessing}. Collectively, these studies support the use of HOG and SVM-based classifiers as lightweight and interpretable baselines.
+
+Preprocessing is another recurring topic in the TSR literature. Color-space conversion, histogram equalization, thresholding, Hough-transform-based processing, and ROI extraction have been used to reduce background interference and emphasize sign structure before classification~\cite{tong2017svmcnn,matos2019speedlimit,agrawal2017moment,junges2019brazilian,ayaou2020hough}. Santaji, Santaji, and Hallur investigated the detection and classification of occluded traffic signs, while Rubio, Demoor, Chalm\'e, Sutton-Charani, and Magnier evaluated the sensitivity of traffic sign classifiers to image alteration and training-set size~\cite{santaji2018occluded,rubio2024sensitivity}. These studies indicate that preprocessing and image quality should be described explicitly because they can affect the information available to the classifier.
+
+Deep learning methods have also been applied to traffic sign recognition through CNN-based classifiers and hybrid systems. Tong, Chen, Li, and Zheng combined SVM-based detection with CNN-based classification~\cite{tong2017svmcnn}. Suresha, Manohar, and Tian proposed a two-stage system that uses modified HOG descriptors and machine-learning classifiers in the first stage, followed by CNN classifiers for specific traffic sign subclasses~\cite{suresha2024twostage}. Rubio, Demoor, Chalm\'e, Sutton-Charani, and Magnier compared classical machine-learning models with a CNN under different training-set sizes and image alterations, with HOG features used to support the classical models~\cite{rubio2024sensitivity}. These studies demonstrate the role of learned representations in TSR while also showing that classical approaches remain relevant for controlled and less computationally intensive experiments.
+
+Overall, previous studies address traffic sign recognition through different combinations of preprocessing, handcrafted feature extraction, and machine-learning or deep-learning classifiers. However, several existing systems combine classification with additional components such as sign detection, temporal processing, or platform-specific deployment. In contrast, the proposed approach focuses specifically on a reproducible GTSRB classification baseline using ROI cropping, grayscale conversion, HOG feature extraction, feature standardization, and LinearSVC classification.
+
+\section{Proposed Methodology}
+\label{sec:methodology}
+
+This section describes the proposed traffic sign classification framework. The method uses the region-of-interest (ROI) annotations provided by the GTSRB dataset instead of performing full-image object localization. Given an input image and its ROI annotation, the sign region is first cropped from the original image. The cropped region is then resized to a fixed resolution of $32 \times 32$ pixels and converted to grayscale. Histogram of Oriented Gradients descriptors are extracted from the grayscale image to represent local edge and shape information. The resulting feature vectors are standardized and classified using a LinearSVC model into one of 43 traffic sign categories.
+
+\subsection{Dataset Preparation}
+
+The experiments were conducted on the German Traffic Sign Recognition Benchmark. The dataset contains traffic sign images organized into 43 categories. Each training class folder includes a CSV annotation file with the image filename, original image size, ROI coordinates, and class label. These ROI annotations were used to crop the traffic sign region before preprocessing and feature extraction.
+
+Fig.~\ref{fig:gtsrb-class-samples} presents one representative ROI-cropped training image from each of the 43 GTSRB classes. The samples illustrate the diversity of sign shapes, symbols, illumination conditions, and image quality contained in the dataset.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{fig_01_gtsrb_43_class_samples.pdf}
+\caption{Representative ROI-cropped training samples from the 43 GTSRB traffic sign classes. One image is shown for each ClassId.}
+\label{fig:gtsrb-class-samples}
+\end{figure*}
+
+The available data include 39,209 training images and 12,630 official test images. In the implemented workflow, the labeled training images were split into training and validation subsets using a stratified 80/20 split. This produced 31,367 training samples and 7,842 validation samples. The official test images and ground-truth file were used only for qualitative sample inspection in the current notebook; full official test-set evaluation is not reported in this version.
+
+Table~\ref{tab:dataset} summarizes the dataset used in the experiments. Fig.~\ref{fig:dataset-distribution} provides additional exploratory analysis of the training data. The number of samples varies substantially among the 43 classes, indicating that the dataset is class-imbalanced. The original image dimensions are also heterogeneous, which motivates resizing all ROI-cropped samples to a common resolution before HOG feature extraction.
+
+\begin{table}[htbp]
+\caption{GTSRB Dataset Summary}
+\label{tab:dataset}
+\centering
+\begin{tabular}{lc}
+\toprule
+Parameter & Value\\
+\midrule
+Number of classes & 43\\
+Training images & 39,209\\
+Official test images & 12,630\\
+Total images & 51,839\\
+Train split & 31,367\\
+Validation split & 7,842\\
+Input annotation & ROI and ClassId\\
+Task type & Multi-class classification\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_02_dataset_distribution_and_dimensions.pdf}
+\caption{Exploratory analysis of the GTSRB training set: (a) number of training images for each ClassId and (b) joint distribution of the original image width and height.}
+\label{fig:dataset-distribution}
+\end{figure*}
+
+\subsection{Image Preprocessing}
+
+Each GTSRB image is first read together with its ROI annotation. The annotated traffic sign region is cropped from the original image using the ROI coordinates provided in the corresponding CSV file. The cropped region is then resized to $32 \times 32$ pixels to ensure a fixed input size for all samples. Finally, the resized RGB image is converted to grayscale before extracting the HOG feature.
+
+This preprocessing sequence preserves the annotated sign region while removing most surrounding background content. The fixed $32 \times 32$ resolution also ensures that all samples produce HOG descriptors with the same dimensionality during both training and inference. Fig.~\ref{fig:pipeline} illustrates the overall classification pipeline.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{pipeline.png}
+\caption{Overview of the proposed GTSRB traffic sign classification pipeline. The method uses ROI annotations to crop the sign region, applies resizing and grayscale conversion, extracts HOG features, standardizes the feature vector, and predicts the traffic sign class using LinearSVC.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Histogram of Oriented Gradients Feature Extraction}
+
+Feature extraction is performed using the HOG descriptor. Unlike raw pixel intensities, HOG represents local object appearance through distributions of gradient orientations, making it more robust to illumination variation while preserving the structural characteristics of traffic signs.
+
+For each grayscale image, horizontal and vertical image gradients are first computed. The gradient magnitude and orientation are calculated as
+\begin{equation}
+G = \sqrt{G_x^2 + G_y^2}
+\label{eq:gradient-magnitude}
+\end{equation}
+and
+\begin{equation}
+\theta = \tan^{-1}\left(\frac{G_y}{G_x}\right).
+\label{eq:gradient-orientation}
+\end{equation}
+
+The image is divided into cells of $8 \times 8$ pixels. Within each cell, gradient orientations are accumulated into a histogram containing nine orientation bins. Neighboring cells are grouped into overlapping blocks consisting of $2 \times 2$ cells, and block normalization is performed using the L2-Hys normalization scheme to improve robustness against illumination changes.
+
+Finally, all normalized histograms are concatenated into a single one-dimensional feature vector representing the preprocessed traffic sign image. With the $32 \times 32$ grayscale input and the HOG configuration used by the proposed pipeline, each sample is represented by a 324-dimensional descriptor.
+
+\begin{table}[htbp]
+\caption{HOG Feature Extraction Parameters}
+\label{tab:hog}
+\centering
+\begin{tabular}{lc}
+\toprule
+Parameter & Value\\
+\midrule
+Input size & $32 \times 32$\\
+Orientations & 9\\
+Pixels per cell & $8 \times 8$\\
+Cells per block & $2 \times 2$\\
+Block normalization & L2-Hys\\
+Feature dimension & 324\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Feature Standardization}
+
+Before classification, the HOG feature vectors are standardized using \texttt{StandardScaler}. The scaler is fitted on the training split and then applied to the validation and test samples using the same fitted parameters. This step places feature dimensions on a comparable scale, which is important for linear margin-based classifiers such as LinearSVC.
+
+\subsection{LinearSVC Classification}
+
+After HOG extraction, each preprocessed traffic sign image is represented by a 324-dimensional feature vector. These standardized feature vectors are used to train a Linear Support Vector Machine classifier for 43-class traffic sign classification. In the implemented notebook, the classifier is configured as \texttt{LinearSVC} with $C=1.0$, \texttt{class\_weight=balanced}, \texttt{max\_iter=10000}, \texttt{dual=False}, and \texttt{random\_state=42}.
+
+The classifier receives a feature vector $\mathbf{x}_i \in \mathbb{R}^{324}$ and predicts a class label $\hat{y}_i \in \{0,1,\ldots,42\}$. The ground-truth label $y_i$ is obtained from the \texttt{ClassId} field in the GTSRB annotation files.
+
+\begin{table}[htbp]
+\caption{LinearSVC Training Parameters}
+\label{tab:svm}
+\centering
+\begin{tabular}{lc}
+\toprule
+Parameter & Value\\
+\midrule
+Classifier & LinearSVC\\
+Regularization ($C$) & 1.0\\
+Class weight & balanced\\
+Maximum iterations & 10000\\
+Dual formulation & False\\
+Random state & 42\\
+Input feature dimension & 324\\
+Output & 43-class classification\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Training and Inference Procedure}
+
+During training, ROI-cropped and preprocessed traffic sign images are converted into HOG feature vectors. The scaler and LinearSVC model are fitted using the training split. During inference, the same preprocessing and HOG extraction steps are applied to an input traffic sign region, the fitted scaler transforms the feature vector, and the trained LinearSVC model predicts the traffic sign class. This workflow performs classification of annotated traffic sign regions and does not include sliding-window localization or Non-Maximum Suppression.
+
+\section{Experimental Setup}
+\label{sec:experimental-setup}
+
+The implementation was developed in Python using OpenCV, scikit-image, scikit-learn, Matplotlib, and Weights \& Biases. The dataset workflow follows the GTSRB annotations described in the previous section: each image is cropped using its ROI coordinates, resized to $32 \times 32$, converted to grayscale, transformed into a HOG descriptor, standardized, and classified with LinearSVC.
+
+For model validation, the labeled GTSRB training set was split into training and validation subsets using a stratified 80/20 split. This produced 31,367 training samples and 7,842 validation samples. The same preprocessing and feature-extraction pipeline was applied to both subsets. The official GTSRB test set was kept separate and was used only for qualitative inspection in the current notebook.
+
+Model performance was recorded in Weights \& Biases. The logged validation metrics include accuracy, macro precision, macro recall, macro F1-score, weighted precision, weighted recall, weighted F1-score, and training time. The Weights \& Biases run also stores a small sample prediction table for manual inspection of several test images.
+
+Table~\ref{tab:experiment} summarizes the experimental configuration.
+
+\begin{table}[htbp]
+\caption{Experimental Configuration}
+\label{tab:experiment}
+\centering
+\begin{tabular}{lc}
+\toprule
+Parameter & Value\\
+\midrule
+Programming language & Python\\
+Libraries & OpenCV, scikit-image, scikit-learn\\
+Visualization & Matplotlib\\
+Experiment tracking & Weights \& Biases\\
+Input size & $32 \times 32$\\
+Feature extractor & HOG\\
+Classifier & LinearSVC\\
+Training split & 31,367 samples\\
+Validation split & 7,842 samples\\
+Evaluation & Validation and sample test inspection\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Results and Discussion}
+\label{sec:results}
+
+\subsection{Validation Results}
+
+The HOG and LinearSVC pipeline was evaluated on the stratified validation split. The model achieved 92.36\% accuracy, 92.98\% macro precision, 93.96\% macro recall, 93.43\% macro F1-score, 92.27\% weighted precision, 92.36\% weighted recall, and 92.27\% weighted F1-score. The logged training time was 295.68 seconds. These values were recorded in the Weights \& Biases run associated with the experimentation.
+
+\begin{table}[htbp]
+\caption{Validation Performance of HOG + LinearSVC on GTSRB}
+\label{tab:validation_metrics}
+\centering
+\begin{tabular}{lc}
+\toprule
+Metric & Value\\
+\midrule
+Accuracy & 92.36\%\\
+Macro precision & 92.98\%\\
+Macro recall & 93.96\%\\
+Macro F1-score & 93.43\%\\
+Weighted precision & 92.27\%\\
+Weighted recall & 92.36\%\\
+Weighted F1-score & 92.27\%\\
+Training time & 295.68 s\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A small qualitative inspection on 12 official test images yielded 85.00\% sample accuracy. This number is only a sampled inspection result and should not be interpreted as the official GTSRB test-set accuracy.
+
+\subsection{Class-wise Discussion}
+
+The validation performance is not perfectly uniform across classes. The lowest validation F1-scores were observed for ClassId 5 (0.72), ClassId 1 (0.79), ClassId 2 (0.80), ClassId 29 (0.83), and ClassId 30 (0.83). These weaker classes suggest that some traffic signs remain harder to separate even after ROI cropping and HOG extraction, especially when shapes or local structures are visually similar or when the class support is smaller than the majority classes. The row-normalized confusion matrix in Fig.~\ref{fig:validation-confusion-matrix} was therefore examined to provide a more detailed view of the class-wise prediction patterns.
+
+\begin{table}[htbp]
+\caption{Lowest Validation F1-Scores by Class}
+\label{tab:weak_classes}
+\centering
+\begin{tabular}{lc}
+\toprule
+ClassId & F1-score\\
+\midrule
+5 & 0.72\\
+1 & 0.79\\
+2 & 0.80\\
+29 & 0.83\\
+30 & 0.83\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.74\textwidth]{fig_04_validation_confusion_matrix.pdf}
+\caption{Row-normalized confusion matrix obtained on the stratified validation split. Each row corresponds to a ground-truth ClassId, while each column represents the predicted ClassId.}
+\label{fig:validation-confusion-matrix}
+\end{figure*}
+
+Most of the probability mass is concentrated along the main diagonal, indicating that the majority of validation samples were assigned to their correct classes. The remaining off-diagonal responses show that classification errors are concentrated in a limited subset of traffic sign categories, consistent with the lower class-wise F1-scores reported in Table~\ref{tab:weak_classes}.
+
+\subsection{Discussion}
+
+The gap between macro and weighted metrics is moderate, which suggests that class difficulty is not fully uniform. Because the model uses a handcrafted HOG descriptor and a linear classifier, the pipeline remains transparent and reproducible, but its performance is still influenced by the underlying class imbalance and by the visual similarity of certain traffic signs. The current implementation logs summary metrics and a small sample prediction table rather than epoch-wise learning curves, since the classifier is trained in a single fitting step rather than through iterative epochs.
+
+The current experimental setup therefore provides a reproducible classical baseline, but it does not yet replace a full study with official test-set evaluation, ablation studies, and comparisons against alternative methods.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+A lightweight traffic sign classification pipeline based on HOG feature extraction and a LinearSVC classifier was presented for the GTSRB dataset. The implemented workflow uses the ROI annotations provided by the dataset to crop traffic sign regions, resize them to $32 \times 32$ pixels, convert them to grayscale, extract 324-dimensional HOG descriptors, standardize the resulting feature vectors, and classify them into 43 traffic sign categories.
+
+On the stratified validation split, the model achieved 92.36\% accuracy and a macro F1-score of 93.43\%. These results show that a classical feature-based approach can provide a reproducible baseline for traffic sign classification when ROI annotations are available. At the same time, the current methodology has several limitations. The official GTSRB test set has not yet been fully evaluated, and the current report does not include ablation studies or comparisons against stronger learning-based classifiers. Future work should therefore evaluate the full official test set, analyze class-wise errors more thoroughly, compare against additional baselines, and investigate whether color information or deep learning models improve performance on visually similar traffic sign classes.
+
+\begin{thebibliography}{00}
+
+\bibitem{liu2022hogsvm}
+Y. Liu and W. Zhong, ``A novel SVM network using HOG feature for prohibition traffic sign recognition,'' \emph{Wireless Communications and Mobile Computing}, Wiley/Hindawi, 2022.
+
+\bibitem{suresha2024twostage}
+R. Suresha, N. Manohar, and J. Tian, ``Two-stage traffic sign classification system,'' \emph{Procedia Computer Science}, Elsevier, 2024.
+
+\bibitem{tong2017svmcnn}
+G. Tong, H. Chen, Y. Li, and K. Zheng, ``Traffic sign recognition based on SVM and convolutional neural network,'' in \emph{Proc. 12th IEEE Conference on Industrial Electronics and Applications (ICIEA)}, 2017.
+
+\bibitem{matos2019speedlimit}
+I. Mato\v{s}, Z. Krpi\'c, and K. Romi\'c, ``The speed limit road signs recognition using Hough transformation and multi-class SVM,'' in \emph{Proc. International Conference on Systems, Signals and Image Processing (IWSSIP)}, IEEE, 2019.
+
+\bibitem{agrawal2017moment}
+S. Agrawal and R. K. Chaurasiya, ``Automatic traffic sign detection and recognition using moment invariants and support vector machine,'' in \emph{Proc. International Conference on Recent Innovations in Signal Processing and Embedded Systems (RISE)}, IEEE, 2017.
+
+\bibitem{rubio2024sensitivity}
+A. Rubio, G. Demoor, S. Chalm\'e, N. Sutton-Charani, and B. Magnier, ``Sensitivity analysis of traffic sign recognition to image alteration and training data size,'' \emph{Information}, MDPI, 2024.
+
+\bibitem{vieira2025preprocessing}
+L. Vieira, ``Comparing performance of preprocessing techniques for traffic sign recognition using a HOG-SVM,'' \emph{arXiv preprint arXiv:2504.09424}, 2025.
+
+\bibitem{younes2023review}
+Y. Zaidani, B. El Habil, and A. Ellahyani, ``A review of automatic road sign recognition systems,'' in \emph{Proc. 3rd International Conference on Innovative Research in Applied Science, Engineering and Technology (IRASET)}, IEEE, 2023.
+
+\bibitem{junges2019brazilian}
+R. Z. Junges, M. B. de Paula, and M. S. de Aguiar, ``Brazilian traffic signs detection and recognition in videos using CLAHE, HOG feature extraction and SVM cascade classifier with temporal coherence,'' in \emph{Proc. Mexican International Conference on Artificial Intelligence (MICAI)}, Springer Nature, 2019.
+
+\bibitem{agrawal2017ensemble}
+S. Agrawal and R. K. Chaurasiya, ``Ensemble of SVM for accurate traffic sign detection and recognition,'' in \emph{Proc. 1st International Conference on Graphics and Signal Processing (ICGSP)}, ACM, 2017.
+
+\bibitem{cojocariu2018hogsvm}
+D. Cojocariu, C. Zet, C. Fo\c{s}al\u{a}u, and M. Skoczylas, ``Detection of traffic signs based on support vector machine classification using HOG features,'' in \emph{Proc. International Conference and Exposition on Electrical and Power Engineering (EPE)}, IEEE, 2018.
+
+\bibitem{santaji2018occluded}
+S. Santaji, S. Santaji, and S. Hallur, ``Detection and classification of occluded traffic sign boards,'' in \emph{Proc. International Conference on Electrical, Electronics, Communication, Computer, and Optimization Techniques (ICEECCOT)}, IEEE, 2018.
+
+\bibitem{qiang2017android}
+J. Qiang, S. Wang, and Z. Shan, ``Design of the traffic sign recognition system based on Android platform,'' in \emph{Proc. International Conference on Intelligent Computing for Sustainable Energy and Environment}, Springer Nature, 2017.
+
+\bibitem{ayaou2020hough}
+T. Ayaou, M. Boussaid, K. Afdel, and A. Amghar, ``Improving road signs detection performance by combining the features of Hough transform and texture,'' \emph{arXiv preprint arXiv:2010.06453}, 2020.
+
+\end{thebibliography}
+
+\end{document}
