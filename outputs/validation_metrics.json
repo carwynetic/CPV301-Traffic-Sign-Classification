@@ -1,0 +1,12 @@
+{
+  "accuracy": 0.9206834991073706,
+  "macro_precision": 0.9330961490745636,
+  "macro_recall": 0.936456599174351,
+  "macro_f1": 0.9343503106518328,
+  "weighted_precision": 0.9198176655167787,
+  "weighted_recall": 0.9206834991073706,
+  "weighted_f1": 0.9197606777460638,
+  "training_time_seconds_this_run": 228.16140183599998,
+  "num_train_samples": 31367,
+  "num_validation_samples": 7842
+}
